@@ -7,6 +7,7 @@ replace github.com/odysseythink/pantheon => /Users/ranwei/workspace/go_work/pant
 require (
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/odysseythink/pantheon v0.0.8
+	github.com/sashabaranov/go-openai v1.41.2
 	gopkg.in/yaml.v3 v3.0.1
 )
 
