@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/odysseythink/go-wren-ai-service/internal/core"
+	"github.com/odysseythink/go-wren-ai-service/internal/provider"
 	"github.com/odysseythink/go-wren-ai-service/pkg/sqlutil"
 )
 
@@ -75,4 +76,15 @@ func (e *WrenEngine) ExecuteSQL(ctx context.Context, sql string, opts core.Engin
 	}
 
 	return &core.EngineResult{Success: false, Error: fmt.Sprintf("status %d: %v", resp.StatusCode, result)}, nil
+}
+
+func init() {
+	provider.RegisterEngine("wren_engine", func(cfg map[string]any) (core.Engine, error) {
+		endpoint, _ := cfg["endpoint"].(string)
+		var manifest map[string]any
+		if v, ok := cfg["manifest"].(map[string]any); ok {
+			manifest = v
+		}
+		return NewWrenEngine(endpoint, manifest), nil
+	})
 }

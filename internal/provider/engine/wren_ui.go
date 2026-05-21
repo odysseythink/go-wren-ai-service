@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/odysseythink/go-wren-ai-service/internal/core"
+	"github.com/odysseythink/go-wren-ai-service/internal/provider"
 	"github.com/odysseythink/go-wren-ai-service/pkg/sqlutil"
 )
 
@@ -79,4 +80,11 @@ func (e *WrenUI) ExecuteSQL(ctx context.Context, sql string, opts core.EngineOpt
 		}
 	}
 	return &core.EngineResult{Success: false, Error: msg}, nil
+}
+
+func init() {
+	provider.RegisterEngine("wren_ui", func(cfg map[string]any) (core.Engine, error) {
+		endpoint, _ := cfg["endpoint"].(string)
+		return NewWrenUI(endpoint), nil
+	})
 }

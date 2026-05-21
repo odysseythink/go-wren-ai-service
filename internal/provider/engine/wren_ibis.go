@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/odysseythink/go-wren-ai-service/internal/core"
+	"github.com/odysseythink/go-wren-ai-service/internal/provider"
 	"github.com/odysseythink/go-wren-ai-service/pkg/sqlutil"
 )
 
@@ -81,4 +82,17 @@ func (e *WrenIbis) ExecuteSQL(ctx context.Context, sql string, opts core.EngineO
 	}
 
 	return &core.EngineResult{Success: false, Error: fmt.Sprintf("status %d: %v", resp.StatusCode, result)}, nil
+}
+
+func init() {
+	provider.RegisterEngine("wren_ibis", func(cfg map[string]any) (core.Engine, error) {
+		endpoint, _ := cfg["endpoint"].(string)
+		source, _ := cfg["source"].(string)
+		manifest, _ := cfg["manifest"].(string)
+		var connInfo map[string]any
+		if v, ok := cfg["connection_info"].(map[string]any); ok {
+			connInfo = v
+		}
+		return NewWrenIbis(endpoint, source, manifest, connInfo), nil
+	})
 }

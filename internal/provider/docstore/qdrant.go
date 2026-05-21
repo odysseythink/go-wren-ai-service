@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/odysseythink/go-wren-ai-service/internal/core"
+	"github.com/odysseythink/go-wren-ai-service/internal/provider"
 )
 
 // QdrantProvider implements core.DocStoreProvider using Qdrant's REST API.
@@ -233,4 +234,29 @@ func (r *QdrantRetriever) Run(ctx context.Context, queryEmbedding []float32, fil
 		return nil, err
 	}
 	return &core.RetrievalResult{Documents: docs}, nil
+}
+
+func init() {
+	provider.RegisterDocStore("qdrant", func(cfg map[string]any) (core.DocStoreProvider, error) {
+		location, _ := cfg["location"].(string)
+		if location == "" {
+			location = "http://qdrant:6333"
+		}
+		apiKey, _ := cfg["api_key"].(string)
+		timeout := 120
+		if t, ok := cfg["timeout"].(int); ok {
+			timeout = t
+		}
+		if t, ok := cfg["timeout"].(float64); ok {
+			timeout = int(t)
+		}
+		dim := 3072
+		if d, ok := cfg["embedding_model_dim"].(int); ok {
+			dim = d
+		}
+		if d, ok := cfg["embedding_model_dim"].(float64); ok {
+			dim = int(d)
+		}
+		return NewQdrantProvider(location, apiKey, dim, timeout), nil
+	})
 }
