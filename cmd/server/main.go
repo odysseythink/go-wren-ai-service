@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	openai "github.com/odysseythink/pantheon/providers/openai"
+	"github.com/odysseythink/pantheon/extensions/embed"
 	"github.com/odysseythink/go-wren-ai-service/internal/config"
 	"github.com/odysseythink/go-wren-ai-service/internal/core"
 	"github.com/odysseythink/go-wren-ai-service/internal/handler"
@@ -33,12 +33,14 @@ func main() {
 		"response_format": map[string]any{"type": "json_object"},
 	})
 
-	embedderProvider := embedder.NewOpenAIEmbedderProvider(
-		cfg.EmbedderOpenAIAPIKey,
-		cfg.EmbedderOpenAIAPIBase,
+	embedProvider, ok := pantheonProvider.(embed.Provider)
+	if !ok {
+		log.Fatalf("pantheon provider does not support embedding")
+	}
+	embedderProvider := embedder.NewPantheonEmbedderProvider(
+		embedProvider,
 		cfg.EmbeddingModel,
 		cfg.EmbeddingModelDim,
-		120*time.Second,
 	)
 
 	docStoreProvider := docstore.NewQdrantProvider(

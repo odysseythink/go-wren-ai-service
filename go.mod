@@ -11,7 +11,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/odysseythink/pantheon v0.0.8
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/sashabaranov/go-openai v1.41.2
 	golang.org/x/sync v0.20.0
 	gopkg.in/yaml.v3 v3.0.1
 )

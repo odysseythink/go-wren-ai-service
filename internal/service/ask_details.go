@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/patrickmn/go-cache"
 	"github.com/odysseythink/go-wren-ai-service/internal/model"
@@ -30,8 +29,7 @@ type AskDetailsResult struct {
 }
 
 // AskDetails runs the ask-details pipeline.
-func (s *AskDetailsService) AskDetails(ctx context.Context, req *model.AskDetailsRequest) {
-	queryID := fmt.Sprintf("ask-details-%d", time.Now().UnixNano())
+func (s *AskDetailsService) AskDetails(ctx context.Context, queryID string, req *model.AskDetailsRequest) {
 	s.setResult(queryID, &AskDetailsResult{Status: "understanding"})
 
 	result, err := s.sqlBreakdown.Run(ctx, &generation.SQLBreakdownRequest{

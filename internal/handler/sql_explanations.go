@@ -19,7 +19,7 @@ func newSQLExplanationHandler(s *service.SQLExplanationService) chi.Router {
 			return
 		}
 		queryID := uuid.New().String()
-		go s.SQLExplanation(r.Context(), &req)
+		go s.SQLExplanation(r.Context(), queryID, &req)
 		json.NewEncoder(w).Encode(model.SQLExplanationResponse{QueryID: queryID})
 	})
 	r.Get("/{query_id}/result", func(w http.ResponseWriter, r *http.Request) {

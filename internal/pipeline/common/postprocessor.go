@@ -196,4 +196,16 @@ const TEXT_TO_SQL_RULES = `
 - DON'T USE "DATE_ADD" or "DATE_SUB" functions for date operations, instead use syntax like this "current_date - INTERVAL '7' DAY"!
 - ALWAYS ADD "timestamp" to the front of the timestamp literal, ex. "timestamp '2024-02-20 12:00:00'"
 - USE THE VIEW TO SIMPLIFY THE QUERY.
+- DON'T MISUSE THE VIEW NAME. THE ACTUAL NAME IS FOLLOWING THE CREATE VIEW STATEMENT.
+- MUST USE the value of alias from the comment section of the corresponding table or column in the DATABASE SCHEMA section for the column/table alias.
+  - EXAMPLE
+    DATABASE SCHEMA
+    /* {"displayName":"_orders","description":"A model representing the orders data."} */
+    CREATE TABLE orders (
+      -- {"description":"A column that represents the timestamp when the order was approved.","alias":"_timestamp"}
+      ApprovedTimestamp TIMESTAMP
+    }
+
+    SQL
+    SELECT ApprovedTimestamp AS _timestamp FROM orders AS _orders;
 `

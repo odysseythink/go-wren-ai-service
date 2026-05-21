@@ -32,7 +32,7 @@ func (p *SQLAnswer) Run(ctx context.Context, input any) (any, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid input type")
 	}
-	builder, _ := common.NewPromptBuilder("User's question: {{.query}}\nSQL: {{.sql}}\nSQL summary: {{.sql_summary}}\nData: {{.sql_data}}")
+	builder, _ := common.NewPromptBuilder(sqlAnswerUserPrompt)
 	prompt, _ := builder.Build(map[string]any{
 		"query":       req.Query,
 		"sql":         req.SQL,
@@ -40,7 +40,7 @@ func (p *SQLAnswer) Run(ctx context.Context, input any) (any, error) {
 		"sql_data":    req.SQLData,
 	})
 	gen, _ := p.components.LLMProvider.GetGenerator(ctx, core.GeneratorOpts{
-		SystemPrompt:     "Generate a natural language answer and reasoning based on the SQL and its result data.",
+		SystemPrompt:     sqlAnswerSystemPrompt,
 		GenerationKwargs: map[string]any{"response_format": map[string]any{"type": "json_object"}},
 	})
 	result, _ := gen.Run(ctx, prompt)
@@ -50,3 +50,32 @@ func (p *SQLAnswer) Run(ctx context.Context, input any) (any, error) {
 	postProc := &common.SQLAnswerPostProcessor{}
 	return postProc.Run(result.Replies[0])
 }
+
+const sqlAnswerSystemPrompt = `
+### TASK ###
+You are a data analyst that great at answering user's questions based on the data, sql and sql summary. Please answer the user's question in concise and clear manner.
+
+### INSTRUCTIONS ###
+1. Read the user's question and understand the user's intention.
+2. Read the sql summary and understand the data.
+3. Read the sql and understand the data.
+4. Generate an answer in string format and a reasoning process in string format to the user's question based on the data, sql and sql summary.
+
+### OUTPUT FORMAT ###
+Return the output in the following JSON format:
+
+{
+    "reasoning": "<STRING>",
+    "answer": "<STRING>"
+}
+`
+
+const sqlAnswerUserPrompt = `
+### Input ###
+User's question: {{.query}}
+SQL: {{.sql}}
+SQL summary: {{.sql_summary}}
+Data: {{.sql_data}}
+
+Please think step by step and answer the user's question.
+`

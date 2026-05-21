@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/patrickmn/go-cache"
 	"github.com/odysseythink/go-wren-ai-service/internal/model"
@@ -52,8 +50,7 @@ type AskResult struct {
 }
 
 // Ask runs the full ask pipeline asynchronously.
-func (s *AskService) Ask(ctx context.Context, req *model.AskRequest) {
-	queryID := fmt.Sprintf("ask-%d", time.Now().UnixNano())
+func (s *AskService) Ask(ctx context.Context, queryID string, req *model.AskRequest) {
 	s.setResult(queryID, &AskResult{Status: "understanding"})
 
 	query := req.Query

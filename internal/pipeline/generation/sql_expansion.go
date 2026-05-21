@@ -3,6 +3,7 @@ package generation
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/odysseythink/go-wren-ai-service/internal/core"
 	"github.com/odysseythink/go-wren-ai-service/internal/pipeline/common"
@@ -36,10 +37,15 @@ func (p *SQLExpansion) Run(ctx context.Context, input any) (any, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid input type")
 	}
-	builder, _ := common.NewPromptBuilder("SQL: {{.sql}}\nDatabase Schema:\n{{range .documents}}    {{.}}\n{{end}}\nUser's input: {{.query}}")
-	prompt, _ := builder.Build(map[string]any{"sql": req.SQL, "documents": req.Documents, "query": req.Query})
+	builder, _ := common.NewPromptBuilder(sqlExpansionUserPrompt)
+	prompt, _ := builder.Build(map[string]any{
+		"sql":         req.SQL,
+		"documents":   req.Documents,
+		"query":       req.Query,
+		"current_time": time.Now().Format("2006-01-02 15:04:05"),
+	})
 	gen, _ := p.components.LLMProvider.GetGenerator(ctx, core.GeneratorOpts{
-		SystemPrompt:     "Expand the SQL by adding more columns or keywords.",
+		SystemPrompt:     sqlExpansionSystemPrompt,
 		GenerationKwargs: map[string]any{"response_format": map[string]any{"type": "json_object"}},
 	})
 	result, _ := gen.Run(ctx, prompt)
@@ -48,3 +54,33 @@ func (p *SQLExpansion) Run(ctx context.Context, input any) (any, error) {
 	}
 	return p.postProc.Run(ctx, result.Replies[0], req.ProjectID)
 }
+
+const sqlExpansionSystemPrompt = `
+### TASK ###
+You are a great data analyst. You are now given a task to expand original SQL by adding more columns or add more keywords such as DISTINCT.
+
+### INSTRUCTIONS ###
+- Columns are given from the user's input
+- Columns to be added must belong to the given database schema; if no such column exists, keep SQL_QUERY_STRING empty
+
+### OUTPUT FORMAT ###
+Please return the result in the following JSON format:
+
+{
+    "results": [
+        {"sql": <SQL_QUERY_STRING>}
+    ]
+}
+`
+
+const sqlExpansionUserPrompt = `
+SQL: {{.sql}}
+
+Database Schema:
+{{range .documents}}
+    {{.}}
+{{end}}
+
+User's input: {{.query}}
+Current Time: {{.current_time}}
+`

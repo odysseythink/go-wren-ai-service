@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/patrickmn/go-cache"
 	"github.com/odysseythink/go-wren-ai-service/internal/model"
@@ -34,8 +32,7 @@ type SQLExpansionResult struct {
 }
 
 // SQLExpansion runs the sql-expansion pipeline.
-func (s *SQLExpansionService) SQLExpansion(ctx context.Context, req *model.SQLExpansionRequest) {
-	queryID := fmt.Sprintf("sql-expansion-%d", time.Now().UnixNano())
+func (s *SQLExpansionService) SQLExpansion(ctx context.Context, queryID string, req *model.SQLExpansionRequest) {
 	s.setResult(queryID, &SQLExpansionResult{Status: "understanding"})
 
 	query := req.Query

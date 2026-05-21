@@ -2,14 +2,10 @@ package service
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"time"
 
 	"github.com/patrickmn/go-cache"
 	"github.com/odysseythink/go-wren-ai-service/internal/model"
 	"github.com/odysseythink/go-wren-ai-service/internal/pipeline/generation"
-	"github.com/odysseythink/go-wren-ai-service/pkg/sqlutil"
 )
 
 // SQLExplanationService handles sql-explanations requests.
@@ -26,42 +22,44 @@ func NewSQLExplanationService(c *cache.Cache, sqlExplanation *generation.SQLExpl
 // SQLExplanationResult holds the result.
 type SQLExplanationResult struct {
 	Status   string
-	Response [][]model.ExplanationItem
+	Response [][]model.SQLExplanationItem
 	Error    *model.AskError
 }
 
 // SQLExplanation runs the sql-explanation pipeline.
-func (s *SQLExplanationService) SQLExplanation(ctx context.Context, req *model.SQLExplanationRequest) {
-	queryID := fmt.Sprintf("sql-explanation-%d", time.Now().UnixNano())
+func (s *SQLExplanationService) SQLExplanation(ctx context.Context, queryID string, req *model.SQLExplanationRequest) {
 	s.setResult(queryID, &SQLExplanationResult{Status: "understanding"})
 
-	var results [][]model.ExplanationItem
+	var results [][]model.SQLExplanationItem
 	for _, step := range req.StepsWithAnalysisResults {
 		s.setResult(queryID, &SQLExplanationResult{Status: "generating"})
 		result, err := s.sqlExplanation.Run(ctx, &generation.SQLExplanationRequest{
-			Question:         req.Question,
-			SQL:              step.SQL,
-			SQLSummary:       step.Summary,
-			SQLAnalysisResult: map[string]any{"results": step.SQLAnalysisResults},
+			Question:           req.Question,
+			SQL:                step.SQL,
+			SQLSummary:         step.Summary,
+			SQLAnalysisResults: toMapSlice(step.SQLAnalysisResults),
 		})
 		if err != nil {
 			continue
 		}
-		res := result.(map[string]any)
-		if exps, ok := res["explanations"].(string); ok {
-			cleaned := sqlutil.CleanGenerationResult(exps)
-			var parsed []model.ExplanationItem
-			_ = json.Unmarshal([]byte(cleaned), &parsed)
-			results = append(results, parsed)
-		} else {
-			results = append(results, []model.ExplanationItem{})
-		}
+		items := result.([]model.SQLExplanationItem)
+		results = append(results, items)
 	}
 	if len(results) == 0 {
 		s.setResult(queryID, &SQLExplanationResult{Status: "failed", Error: &model.AskError{Code: "OTHERS", Message: "No SQL explanation is found"}})
 		return
 	}
 	s.setResult(queryID, &SQLExplanationResult{Status: "finished", Response: results})
+}
+
+func toMapSlice(items []any) []map[string]any {
+	var results []map[string]any
+	for _, item := range items {
+		if m, ok := item.(map[string]any); ok {
+			results = append(results, m)
+		}
+	}
+	return results
 }
 
 func (s *SQLExplanationService) setResult(queryID string, result *SQLExplanationResult) {

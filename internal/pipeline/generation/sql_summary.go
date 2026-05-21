@@ -31,14 +31,14 @@ func (p *SQLSummary) Run(ctx context.Context, input any) (any, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid input type")
 	}
-	builder, _ := common.NewPromptBuilder("User's Question: {{.query}}\nSQLs: {{.sqls}}\nLanguage: {{.language}}")
+	builder, _ := common.NewPromptBuilder(sqlSummaryUserPrompt)
 	prompt, _ := builder.Build(map[string]any{
 		"query":    req.Query,
 		"sqls":     req.SQLs,
 		"language": req.Language,
 	})
 	gen, _ := p.components.LLMProvider.GetGenerator(ctx, core.GeneratorOpts{
-		SystemPrompt:     "Summarize each SQL query in 10-20 words.",
+		SystemPrompt:     sqlSummarySystemPrompt,
 		GenerationKwargs: map[string]any{"response_format": map[string]any{"type": "json_object"}},
 	})
 	result, _ := gen.Run(ctx, prompt)
@@ -48,3 +48,34 @@ func (p *SQLSummary) Run(ctx context.Context, input any) (any, error) {
 	postProc := &common.SQLSummaryPostProcessor{}
 	return postProc.Run(result.Replies[0], req.SQLs)
 }
+
+const sqlSummarySystemPrompt = `
+### TASK ###
+You are a great data analyst. You are now given a task to summarize a list SQL queries in a human-readable format where each summary should be within 10-20 words.
+You will be given a list of SQL queries and a user's question.
+
+### INSTRUCTIONS ###
+- SQL query summary must be within 10-20 words.
+- SQL query summary must be human-readable and easy to understand.
+- SQL query summary must be concise and to the point.
+- SQL query summary must be in the same language user specified.
+
+### OUTPUT FORMAT ###
+Please return the result in the following JSON format:
+
+{
+    "sql_summary_results": [
+        {"summary": <SQL_QUERY_SUMMARY_STRING_1>},
+        {"summary": <SQL_QUERY_SUMMARY_STRING_2>},
+        ...
+    ]
+}
+`
+
+const sqlSummaryUserPrompt = `
+User's Question: {{.query}}
+SQLs: {{.sqls}}
+Language: {{.language}}
+
+Please think step by step.
+`

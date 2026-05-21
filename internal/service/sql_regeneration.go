@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/patrickmn/go-cache"
 	"github.com/odysseythink/go-wren-ai-service/internal/model"
@@ -30,8 +29,7 @@ type SQLRegenerationResult struct {
 }
 
 // SQLRegeneration runs the sql-regeneration pipeline.
-func (s *SQLRegenerationService) SQLRegeneration(ctx context.Context, req *model.SQLRegenerationRequest) {
-	queryID := fmt.Sprintf("sql-regeneration-%d", time.Now().UnixNano())
+func (s *SQLRegenerationService) SQLRegeneration(ctx context.Context, queryID string, req *model.SQLRegenerationRequest) {
 	s.setResult(queryID, &SQLRegenerationResult{Status: "understanding"})
 
 	var steps []map[string]any

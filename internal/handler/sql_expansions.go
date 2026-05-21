@@ -19,7 +19,7 @@ func newSQLExpansionHandler(s *service.SQLExpansionService) chi.Router {
 			return
 		}
 		queryID := uuid.New().String()
-		go s.SQLExpansion(r.Context(), &req)
+		go s.SQLExpansion(r.Context(), queryID, &req)
 		json.NewEncoder(w).Encode(model.SQLExpansionResponse{QueryID: queryID})
 	})
 	r.Patch("/{query_id}", func(w http.ResponseWriter, r *http.Request) {

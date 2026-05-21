@@ -19,7 +19,7 @@ func newSQLRegenerationHandler(s *service.SQLRegenerationService) chi.Router {
 			return
 		}
 		queryID := uuid.New().String()
-		go s.SQLRegeneration(r.Context(), &req)
+		go s.SQLRegeneration(r.Context(), queryID, &req)
 		json.NewEncoder(w).Encode(model.SQLRegenerationResponse{QueryID: queryID})
 	})
 	r.Get("/{query_id}/result", func(w http.ResponseWriter, r *http.Request) {

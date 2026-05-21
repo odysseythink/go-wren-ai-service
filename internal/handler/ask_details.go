@@ -19,7 +19,7 @@ func newAskDetailsHandler(s *service.AskDetailsService) chi.Router {
 			return
 		}
 		queryID := uuid.New().String()
-		go s.AskDetails(r.Context(), &req)
+		go s.AskDetails(r.Context(), queryID, &req)
 		json.NewEncoder(w).Encode(model.AskDetailsResponse{QueryID: queryID})
 	})
 	r.Get("/{query_id}/result", func(w http.ResponseWriter, r *http.Request) {

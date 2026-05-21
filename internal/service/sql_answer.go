@@ -2,8 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/patrickmn/go-cache"
 	"github.com/odysseythink/go-wren-ai-service/internal/model"
@@ -30,8 +28,7 @@ type SQLAnswerResult struct {
 }
 
 // SQLAnswer runs the sql-answer pipeline.
-func (s *SQLAnswerService) SQLAnswer(ctx context.Context, req *model.SQLAnswerRequest) {
-	queryID := fmt.Sprintf("sql-answer-%d", time.Now().UnixNano())
+func (s *SQLAnswerService) SQLAnswer(ctx context.Context, queryID string, req *model.SQLAnswerRequest) {
 	s.setResult(queryID, &SQLAnswerResult{Status: "understanding"})
 
 	result, err := s.sqlAnswer.Run(ctx, &generation.SQLAnswerRequest{

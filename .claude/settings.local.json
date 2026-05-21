@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/ranwei/workspace/go_work/wren-rewrite/WrenAI-0.9.0/wren-ai-service/**)",
+      "Read(//Users/ranwei/workspace/go_work/wren-rewrite/WrenAI-0.9.0/wren-ai-service/src/**)",
+      "Bash(grep -v \":0$\")"
+    ]
+  }
+}

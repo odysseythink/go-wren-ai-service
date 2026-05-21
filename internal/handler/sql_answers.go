@@ -19,7 +19,7 @@ func newSQLAnswerHandler(s *service.SQLAnswerService) chi.Router {
 			return
 		}
 		queryID := uuid.New().String()
-		go s.SQLAnswer(r.Context(), &req)
+		go s.SQLAnswer(r.Context(), queryID, &req)
 		json.NewEncoder(w).Encode(model.SQLAnswerResponse{QueryID: queryID})
 	})
 	r.Get("/{query_id}/result", func(w http.ResponseWriter, r *http.Request) {

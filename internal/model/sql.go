@@ -51,15 +51,15 @@ type SQLExplanationResponse struct {
 
 // SQLExplanationResultResponse is the GET /v1/sql-explanations/{query_id}/result response.
 type SQLExplanationResultResponse struct {
-	Status   string              `json:"status"`
-	Response [][]ExplanationItem `json:"response,omitempty"`
-	Error    *AskError           `json:"error,omitempty"`
+	Status   string                `json:"status"`
+	Response [][]SQLExplanationItem `json:"response,omitempty"`
+	Error    *AskError             `json:"error,omitempty"`
 }
 
-// ExplanationItem is a single explanation for a SQL component.
-type ExplanationItem struct {
-	ColumnName  string `json:"column_name"`
-	Description string `json:"description"`
+// SQLExplanationItem is a single typed explanation for a SQL analysis result.
+type SQLExplanationItem struct {
+	Type    string                 `json:"type"`
+	Payload map[string]interface{} `json:"payload"`
 }
 
 // SQLExpansionRequest is the POST /v1/sql-expansions request.
