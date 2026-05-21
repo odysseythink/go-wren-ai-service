@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/patrickmn/go-cache"
 	"github.com/odysseythink/go-wren-ai-service/internal/config"
 	"github.com/odysseythink/go-wren-ai-service/internal/core"
@@ -23,24 +25,32 @@ type Container struct {
 }
 
 // NewContainer initializes all services with pipeline dependencies.
-func NewContainer(components core.PipelineComponent, cfg *config.Config) *Container {
+func NewContainer(components map[string]core.PipelineComponent, cfg *config.Config) *Container {
 	queryCache := cache.New(cache.DefaultExpiration, cache.NoExpiration)
 
-	indexingPipe := indexing.NewIndexing(components, cfg.ColumnIndexingBatchSize)
-	retrievalPipe := retrieval.NewRetrieval(components, cfg.TableRetrievalSize, cfg.TableColumnRetrievalSize)
-	historicalPipe := retrieval.NewHistoricalQuestion(components)
+	get := func(name string) core.PipelineComponent {
+		c, ok := components[name]
+		if !ok {
+			panic(fmt.Sprintf("pipeline component %q not found", name))
+		}
+		return c
+	}
 
-	sqlGenPipe := generation.NewSQLGeneration(components)
-	sqlCorrectionPipe := generation.NewSQLCorrection(components)
-	sqlSummaryPipe := generation.NewSQLSummary(components)
-	sqlAnswerPipe := generation.NewSQLAnswer(components)
-	sqlBreakdownPipe := generation.NewSQLBreakdown(components)
-	sqlExpansionPipe := generation.NewSQLExpansion(components)
-	sqlRegenerationPipe := generation.NewSQLRegeneration(components)
-	sqlExplanationPipe := generation.NewSQLExplanation(components)
-	followupSQLPipe := generation.NewFollowUpSQLGeneration(components)
-	semanticsDescPipe := generation.NewSemanticsDescription(components)
-	relationshipRecPipe := generation.NewRelationshipRecommendation(components)
+	indexingPipe := indexing.NewIndexing(get("indexing"), cfg.ColumnIndexingBatchSize)
+	retrievalPipe := retrieval.NewRetrieval(get("retrieval"), cfg.TableRetrievalSize, cfg.TableColumnRetrievalSize)
+	historicalPipe := retrieval.NewHistoricalQuestion(get("historical_question"))
+
+	sqlGenPipe := generation.NewSQLGeneration(get("sql_generation"))
+	sqlCorrectionPipe := generation.NewSQLCorrection(get("sql_correction"))
+	sqlSummaryPipe := generation.NewSQLSummary(get("sql_summary"))
+	sqlAnswerPipe := generation.NewSQLAnswer(get("sql_answer"))
+	sqlBreakdownPipe := generation.NewSQLBreakdown(get("sql_breakdown"))
+	sqlExpansionPipe := generation.NewSQLExpansion(get("sql_expansion"))
+	sqlRegenerationPipe := generation.NewSQLRegeneration(get("sql_regeneration"))
+	sqlExplanationPipe := generation.NewSQLExplanation(get("sql_explanation"))
+	followupSQLPipe := generation.NewFollowUpSQLGeneration(get("followup_sql_generation"))
+	semanticsDescPipe := generation.NewSemanticsDescription(get("semantics_description"))
+	relationshipRecPipe := generation.NewRelationshipRecommendation(get("relationship_recommendation"))
 
 	return &Container{
 		AskService:                   NewAskService(queryCache, retrievalPipe, historicalPipe, sqlGenPipe, sqlCorrectionPipe, sqlSummaryPipe, followupSQLPipe),
