@@ -66,6 +66,16 @@ func convertModelsAndRelationships(models []Model, relationships []Relationship,
 					if desc, ok := col.Properties["description"]; ok {
 						props["description"] = desc
 					}
+					// Extract nested column properties (keys starting with "nested")
+					nestedCols := map[string]any{}
+					for k, v := range col.Properties {
+						if strings.HasPrefix(k, "nested") {
+							nestedCols[k] = v
+						}
+					}
+					if len(nestedCols) > 0 {
+						props["nested_columns"] = nestedCols
+					}
 					b, _ := json.Marshal(props)
 					comment = fmt.Sprintf("-- %s\n  ", string(b))
 				}
@@ -82,8 +92,68 @@ func convertModelsAndRelationships(models []Model, relationships []Relationship,
 			if len(rel.Models) != 2 {
 				continue
 			}
-			// Simplified — full FK logic follows Python's _convert_models_and_relationships
-			_ = pkMap
+			condition := rel.Condition
+			joinType := strings.ToUpper(rel.JoinType)
+			relModels := rel.Models
+
+			comment := fmt.Sprintf(`-- {"condition": %s, "joinType": %s}`+"\n  ", condition, rel.JoinType)
+			shouldAddFK := false
+			var fkConstraint string
+
+			if model.Name == relModels[0] && joinType == "MANY_TO_ONE" {
+				relatedTable := relModels[1]
+				parts := strings.Split(condition, " = ")
+				if len(parts) == 2 {
+					fkColParts := strings.Split(parts[0], ".")
+					if len(fkColParts) == 2 {
+						fkColumn := fkColParts[1]
+						fkConstraint = fmt.Sprintf("FOREIGN KEY (%s) REFERENCES %s(%s)", fkColumn, relatedTable, pkMap[relatedTable])
+						shouldAddFK = true
+					}
+				}
+			} else if model.Name == relModels[1] && joinType == "ONE_TO_MANY" {
+				relatedTable := relModels[0]
+				parts := strings.Split(condition, " = ")
+				if len(parts) == 2 {
+					fkColParts := strings.Split(parts[1], ".")
+					if len(fkColParts) == 2 {
+						fkColumn := fkColParts[1]
+						fkConstraint = fmt.Sprintf("FOREIGN KEY (%s) REFERENCES %s(%s)", fkColumn, relatedTable, pkMap[relatedTable])
+						shouldAddFK = true
+					}
+				}
+			} else if joinType == "ONE_TO_ONE" {
+				for idx, m := range relModels {
+					if m == model.Name {
+						var relatedTable string
+						for _, rm := range relModels {
+							if rm != model.Name {
+								relatedTable = rm
+								break
+							}
+						}
+						parts := strings.Split(condition, " = ")
+						if idx < len(parts) {
+							fkColParts := strings.Split(parts[idx], ".")
+							if len(fkColParts) == 2 {
+								fkColumn := fkColParts[1]
+								fkConstraint = fmt.Sprintf("FOREIGN KEY (%s) REFERENCES %s(%s)", fkColumn, relatedTable, pkMap[relatedTable])
+								shouldAddFK = true
+							}
+						}
+						break
+					}
+				}
+			}
+
+			if shouldAddFK {
+				columnsDDL = append(columnsDDL, map[string]any{
+					"type":       "FOREIGN_KEY",
+					"comment":    comment,
+					"constraint": fkConstraint,
+					"tables":     relModels,
+				})
+			}
 		}
 
 		// TABLE command
