@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -33,7 +35,7 @@ func forceDeploy(cfg *config.Config) error {
 	url := endpoint + "/api/graphql"
 
 	var lastErr error
-	// Exponential backoff: 1s, 2s, 4s (capped by maxTime)
+	// Exponential backoff on retry: 2s, 4s (capped at 10s)
 	for attempt := 0; attempt < 3; attempt++ {
 		if attempt > 0 {
 			delay := time.Duration(1<<attempt) * time.Second
@@ -48,6 +50,7 @@ func forceDeploy(cfg *config.Config) error {
 			return fmt.Errorf("create request: %w", err)
 		}
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
 
 		resp, err := client.Do(req)
 		if err != nil {
@@ -55,15 +58,28 @@ func forceDeploy(cfg *config.Config) error {
 			continue
 		}
 
+		if resp.StatusCode >= 300 {
+			lastErr = fmt.Errorf("unexpected status %d", resp.StatusCode)
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+			continue
+		}
+
 		var result map[string]any
 		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			io.Copy(io.Discard, resp.Body)
 			resp.Body.Close()
 			lastErr = err
 			continue
 		}
+		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 
-		fmt.Printf("Forcing deployment: %v\n", result)
+		if errs, ok := result["errors"]; ok {
+			return fmt.Errorf("graphql error: %v", errs)
+		}
+
+		log.Printf("Forcing deployment: %v", result)
 		return nil
 	}
 

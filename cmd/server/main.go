@@ -26,8 +26,10 @@ func main() {
 
 	// Start HTTP server in a background goroutine so the main goroutine can
 	// perform the optional force-deploy startup hook (mirrors Python entrypoint.sh).
+	done := make(chan struct{})
 	srv := &http.Server{Addr: addr, Handler: router}
 	go func() {
+		defer close(done)
 		log.Printf("go-wren-ai-service starting on %s", addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server failed: %v", err)
@@ -47,6 +49,6 @@ func main() {
 		}
 	}
 
-	// Block forever; the server goroutine keeps running.
-	select {}
+	// Block until the server goroutine exits (e.g., on graceful shutdown).
+	<-done
 }

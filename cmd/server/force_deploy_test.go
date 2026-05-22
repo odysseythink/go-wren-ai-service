@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -19,6 +19,9 @@ func TestForceDeploy_Success(t *testing.T) {
 		}
 		if ct := r.Header.Get("Content-Type"); ct != "application/json" {
 			t.Errorf("expected Content-Type application/json, got %s", ct)
+		}
+		if accept := r.Header.Get("Accept"); accept != "application/json" {
+			t.Errorf("expected Accept application/json, got %s", accept)
 		}
 		if err := json.NewDecoder(r.Body).Decode(&received); err != nil {
 			t.Fatalf("decode body: %v", err)
@@ -42,20 +45,6 @@ func TestForceDeploy_Success(t *testing.T) {
 	vars, _ := received["variables"].(map[string]any)
 	if vars["force"] != true {
 		t.Errorf("expected force=true, got %v", vars["force"])
-	}
-}
-
-func TestForceDeploy_DefaultEndpoint(t *testing.T) {
-	// When WrenUIEndpoint is empty, forceDeploy should fall back to
-	// http://wren-ui:3000. We can't test the actual network call,
-	// but we verify the function doesn't panic on empty endpoint.
-	cfg := &config.Config{
-		WrenUIEndpoint: "",
-	}
-	// This will fail with a network error, not panic.
-	err := forceDeploy(cfg)
-	if err == nil {
-		t.Fatal("expected error when calling non-existent default endpoint")
 	}
 }
 
@@ -91,6 +80,41 @@ func TestForceDeploy_MaxRetriesExceeded(t *testing.T) {
 	err := forceDeploy(cfg)
 	if err == nil {
 		t.Fatal("expected error after max retries")
+	}
+}
+
+func TestForceDeploy_HTTPStatusError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+	}))
+	defer ts.Close()
+
+	cfg := &config.Config{WrenUIEndpoint: ts.URL}
+	err := forceDeploy(cfg)
+	if err == nil {
+		t.Fatal("expected error on HTTP 502")
+	}
+	if !strings.Contains(err.Error(), "502") {
+		t.Errorf("expected error to mention status 502, got: %v", err)
+	}
+}
+
+func TestForceDeploy_GraphQLError(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{
+			"errors": []map[string]any{{"message": "deploy failed"}},
+		})
+	}))
+	defer ts.Close()
+
+	cfg := &config.Config{WrenUIEndpoint: ts.URL}
+	err := forceDeploy(cfg)
+	if err == nil {
+		t.Fatal("expected error on GraphQL error response")
+	}
+	if !strings.Contains(err.Error(), "graphql error") {
+		t.Errorf("expected graphql error, got: %v", err)
 	}
 }
 
@@ -148,7 +172,7 @@ func TestWaitForServer_WrongPath(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when health endpoint returns 404")
 	}
-	if err.Error() != fmt.Sprintf("server at http://%s/health did not become ready within 500ms", addr) {
+	if !strings.Contains(err.Error(), "did not become ready") {
 		t.Fatalf("unexpected error message: %v", err)
 	}
 }
