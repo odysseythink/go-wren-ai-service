@@ -40,7 +40,7 @@ type Config struct {
 
 	// Engine
 	Engine             string `env:"ENGINE" envDefault:"wren_ui"`
-	WrenUIEndpoint     string `env:"WREN_UI_ENDPOINT"`
+	WrenUIEndpoint     string `env:"WREN_UI_ENDPOINT" envDefault:"http://wren-ui:3000"`
 	WrenIbisEndpoint   string `env:"WREN_IBIS_ENDPOINT"`
 	WrenIbisSource     string `env:"WREN_IBIS_SOURCE"`
 	WrenIbisManifest   string `env:"WREN_IBIS_MANIFEST"`
