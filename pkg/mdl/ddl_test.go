@@ -176,25 +176,25 @@ func TestConvertToDDLWithForeignKeys(t *testing.T) {
 	}
 }
 
-func TestConvertToDDLWithOneToOneFK(t *testing.T) {
+func TestConvertToDDLWithOneToManyFK(t *testing.T) {
 	mdl := &MDL{
 		Models: []Model{
 			{
-				Name:       "users",
-				PrimaryKey: "id",
-				Columns:    []Column{{Name: "id", Type: "VARCHAR"}, {Name: "profile_id", Type: "VARCHAR"}},
-			},
-			{
-				Name:       "profiles",
+				Name:       "customers",
 				PrimaryKey: "id",
 				Columns:    []Column{{Name: "id", Type: "VARCHAR"}},
+			},
+			{
+				Name:       "orders",
+				PrimaryKey: "id",
+				Columns:    []Column{{Name: "id", Type: "VARCHAR"}, {Name: "customer_id", Type: "VARCHAR"}},
 			},
 		},
 		Relationships: []Relationship{
 			{
-				Condition: "users.profile_id = profiles.id",
-				JoinType:  "ONE_TO_ONE",
-				Models:    []string{"users", "profiles"},
+				Condition: "customers.id = orders.customer_id",
+				JoinType:  "ONE_TO_MANY",
+				Models:    []string{"customers", "orders"},
 			},
 		},
 		Views:   []View{},
@@ -203,7 +203,7 @@ func TestConvertToDDLWithOneToOneFK(t *testing.T) {
 	commands := ConvertToDDL(mdl, 50)
 	var foundFK bool
 	for _, cmd := range commands {
-		if cmd.Name != "users" {
+		if cmd.Name != "orders" {
 			continue
 		}
 		var content map[string]any
@@ -219,13 +219,96 @@ func TestConvertToDDLWithOneToOneFK(t *testing.T) {
 			}
 			foundFK = true
 			constraint, _ := col["constraint"].(string)
-			if !strings.Contains(constraint, "REFERENCES profiles(id)") {
+			if !strings.Contains(constraint, "FOREIGN KEY (customer_id) REFERENCES customers(id)") {
 				t.Errorf("unexpected FK constraint: %s", constraint)
 			}
 		}
 	}
 	if !foundFK {
-		t.Fatal("expected FOREIGN_KEY entry for ONE_TO_ONE relationship")
+		t.Fatal("expected FOREIGN_KEY entry for ONE_TO_MANY relationship")
+	}
+}
+
+func TestConvertToDDLWithOneToOneFK(t *testing.T) {
+	mdl := &MDL{
+		Models: []Model{
+			{
+				Name:       "users",
+				PrimaryKey: "id",
+				Columns:    []Column{{Name: "id", Type: "VARCHAR"}, {Name: "profile_id", Type: "VARCHAR"}},
+			},
+			{
+				Name:       "profiles",
+				PrimaryKey: "id",
+				Columns:    []Column{{Name: "id", Type: "VARCHAR"}, {Name: "user_id", Type: "VARCHAR"}},
+			},
+		},
+		Relationships: []Relationship{
+			{
+				Condition: "users.profile_id = profiles.user_id",
+				JoinType:  "ONE_TO_ONE",
+				Models:    []string{"users", "profiles"},
+			},
+		},
+		Views:   []View{},
+		Metrics: []Metric{},
+	}
+	commands := ConvertToDDL(mdl, 50)
+
+	// Verify users gets FK referencing profiles
+	var usersFK bool
+	for _, cmd := range commands {
+		if cmd.Name != "users" {
+			continue
+		}
+		var content map[string]any
+		json.Unmarshal([]byte(cmd.Payload), &content)
+		if content["type"] != "TABLE_COLUMNS" {
+			continue
+		}
+		cols, _ := content["columns"].([]any)
+		for _, c := range cols {
+			col, _ := c.(map[string]any)
+			if col["type"] != "FOREIGN_KEY" {
+				continue
+			}
+			usersFK = true
+			constraint, _ := col["constraint"].(string)
+			if !strings.Contains(constraint, "FOREIGN KEY (profile_id) REFERENCES profiles(id)") {
+				t.Errorf("users: unexpected FK constraint: %s", constraint)
+			}
+		}
+	}
+	if !usersFK {
+		t.Fatal("expected FOREIGN_KEY entry for users in ONE_TO_ONE relationship")
+	}
+
+	// Verify profiles gets FK referencing users (reverse side)
+	var profilesFK bool
+	for _, cmd := range commands {
+		if cmd.Name != "profiles" {
+			continue
+		}
+		var content map[string]any
+		json.Unmarshal([]byte(cmd.Payload), &content)
+		if content["type"] != "TABLE_COLUMNS" {
+			continue
+		}
+		cols, _ := content["columns"].([]any)
+		for _, c := range cols {
+			col, _ := c.(map[string]any)
+			if col["type"] != "FOREIGN_KEY" {
+				continue
+			}
+			profilesFK = true
+			constraint, _ := col["constraint"].(string)
+			if !strings.Contains(constraint, "FOREIGN KEY (user_id) REFERENCES users(id)") {
+				t.Errorf("profiles: unexpected FK constraint: %s", constraint)
+			}
+		}
+	}
+	if !profilesFK {
+		t.Fatal("expected FOREIGN_KEY entry for profiles in ONE_TO_ONE relationship")
 	}
 }
 
